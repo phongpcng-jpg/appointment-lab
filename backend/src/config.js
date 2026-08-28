@@ -19,12 +19,17 @@ export const envSchema = z.object({
   SMTP_FROM: z.string().email().optional()
 }).superRefine((value, ctx) => {
   const smtpConfigured = Boolean(value.SMTP_HOST || value.SMTP_USER || value.SMTP_PASSWORD || value.SMTP_FROM);
-  if (smtpConfigured) {
+  const smtpRequired = smtpConfigured || Boolean(value.ADMIN_EMAIL);
+  if (smtpRequired) {
     for (const key of ['SMTP_HOST', 'SMTP_USER', 'SMTP_PASSWORD', 'SMTP_FROM']) {
       if (!value[key]) {
-        ctx.addIssue({ code: 'custom', path: [key], message: `${key} is required when SMTP is configured` });
+        ctx.addIssue({ code: 'custom', path: [key], message: `${key} is required when SMTP is required` });
       }
     }
+  }
+
+  if (value.ADMIN_EMAIL && !value.DATABASE_URL) {
+    ctx.addIssue({ code: 'custom', path: ['DATABASE_URL'], message: 'DATABASE_URL is required when ADMIN_EMAIL is configured' });
   }
 
   if (value.NODE_ENV === 'production' && !value.JWT_ACCESS_SECRET) {
