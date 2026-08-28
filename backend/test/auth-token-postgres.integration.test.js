@@ -1,18 +1,20 @@
+import 'dotenv/config';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import knex from 'knex';
 import { hashOpaqueToken } from '../src/auth/crypto.js';
-import { hashPassword } from '../src/auth/password.js';
 import { verifyEmailToken } from '../src/auth/email-verification.js';
 import { completePasswordSetup } from '../src/auth/password-setup.js';
 import { dbConfig } from '../src/db.js';
 
-const databaseUrl = process.env.DATABASE_URL;
 const runIntegration = process.env.RUN_DB_INTEGRATION === '1';
 
-test('PostgreSQL token lifecycle integration suite is configured', { skip: !runIntegration }, async () => {
-  assert.ok(databaseUrl, 'DATABASE_URL is required when RUN_DB_INTEGRATION=1');
+if (runIntegration && !process.env.DATABASE_URL) {
+  throw new Error('DATABASE_URL is required when RUN_DB_INTEGRATION=1; ensure backend/.env exists');
+}
+
+test('PostgreSQL token lifecycle integration', { skip: !runIntegration }, async () => {
   const db = knex(dbConfig);
   const userId = crypto.randomUUID();
   const emailToken = crypto.randomBytes(32).toString('hex');
@@ -49,9 +51,4 @@ test('PostgreSQL token lifecycle integration suite is configured', { skip: !runI
     await db('users').where({ id: userId }).del();
     await db.destroy();
   }
-});
-
-test('PostgreSQL token lifecycle integration requires an explicit local opt-in', () => {
-  assert.equal(runIntegration, false, 'RUN_DB_INTEGRATION=1 should only be used for the database integration test command');
-  assert.ok(typeof hashPassword === 'function');
 });
