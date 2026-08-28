@@ -1,5 +1,5 @@
 import { verifyPassword } from './password.js';
-import { createAccessToken } from './jwt.js';
+import { signAccessToken } from './jwt.js';
 import { createRefreshSession } from './refresh-session.js';
 
 export async function authenticateUser({ email, password, database }) {
@@ -15,7 +15,7 @@ export async function authenticateUser({ email, password, database }) {
     throw error;
   }
 
-  const accessToken = await createAccessToken({ userId: user.id, role: user.role, status: user.status });
+  const accessToken = await signAccessToken({ userId: user.id, role: user.role, status: user.status });
   const refreshToken = await createRefreshSession({ userId: user.id, database });
   await database('users').where({ id: user.id }).update({ last_login_at: database.fn.now(), updated_at: database.fn.now() });
 
