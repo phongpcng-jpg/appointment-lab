@@ -3,7 +3,6 @@ import { completePasswordSetup } from '../auth/password-setup.js';
 import { authenticateUser } from '../auth/login.js';
 import { signAccessToken } from '../auth/jwt.js';
 import { rotateRefreshSession, revokeRefreshSession } from '../auth/refresh-session.js';
-import { db } from '../db.js';
 
 const passwordSetupSchema = z.object({ token: z.string().min(1), password: z.string().min(12).max(128) });
 const loginSchema = z.object({ email: z.string().email(), password: z.string().min(1).max(128) });
@@ -24,16 +23,18 @@ function clearRefreshCookie(reply) {
   reply.clearCookie(REFRESH_COOKIE, { ...cookieOptions, maxAge: undefined });
 }
 
-export async function authRoutes(app) {
+export async function authRoutes(app, options) {
+  const { database } = options;
+
   app.post('/api/v1/auth/password/setup', async (request, reply) => {
     const input = passwordSetupSchema.parse(request.body);
-    const result = await completePasswordSetup({ ...input, database: db });
+    const result = await completePasswordSetup({ ...input, database });
     return reply.send({ data: result });
   });
 
   app.post('/api/v1/auth/login', async (request, reply) => {
     const input = loginSchema.parse(request.body);
-    const result = await authenticateUser({ ...input, database: db });
+    const result = await authenticateUser({ ...input, database });
     setRefreshCookie(reply, result.refreshToken);
     return reply.send({ data: { accessToken: result.accessToken, user: result.user } });
   });
@@ -45,7 +46,7 @@ export async function authRoutes(app) {
     }
 
     try {
-      const result = await rotateRefreshSession({ token, database: db });
+      const result = await rotateRefreshSession({ token, database });
       const accessToken = await signAccessToken({ userId: result.userId, role: result.role, status: result.status });
       setRefreshCookie(reply, result.token);
       return reply.send({ data: { accessToken } });
@@ -57,7 +58,7 @@ export async function authRoutes(app) {
 
   app.post('/api/v1/auth/logout', async (request, reply) => {
     const token = request.cookies[REFRESH_COOKIE];
-    if (token) await revokeRefreshSession({ token, database: db });
+    if (token) await revokeRefreshSession({ token, database });
     clearRefreshCookie(reply);
     return reply.send({ data: { loggedOut: true } });
   });
