@@ -19,9 +19,9 @@ function createQuery(record, calls, type) {
 function createDb({ emailRecord = null, setupRecord = null } = {}) {
   const calls = [];
   const db = function table(name) {
-    if (name === 'email_verification_tokens') return createQuery(emailRecord, calls, 'email-token');
-    if (name === 'password_setup_tokens') return createQuery(setupRecord, calls, 'setup-token');
-    if (name === 'users') return createQuery(null, calls, 'user');
+    if (name.startsWith('email_verification_tokens')) return createQuery(emailRecord, calls, 'email-token');
+    if (name.startsWith('password_setup_tokens')) return createQuery(setupRecord, calls, 'setup-token');
+    if (name.startsWith('users')) return createQuery(null, calls, 'user');
     throw new Error(`Unexpected table: ${name}`);
   };
 
@@ -40,7 +40,7 @@ test('email verification rejects invalid token without writes', async () => {
   assert.deepEqual(db.calls, []);
 });
 
-test('email verification atomically updates user and consumes token', async () => {
+test('email verification updates user and consumes token in one transaction', async () => {
   const db = createDb({ emailRecord: { token_id: 'token-1', user_id: 'user-1', email_verified_at: null } });
   const result = await verifyEmailToken({ token: 'valid-token', database: db });
   assert.deepEqual(result, { userId: 'user-1', alreadyVerified: false });
@@ -58,7 +58,7 @@ test('password setup rejects invalid token without writes', async () => {
   assert.deepEqual(db.calls, []);
 });
 
-test('password setup atomically updates password and consumes token', async () => {
+test('password setup updates password and consumes token in one transaction', async () => {
   const db = createDb({ setupRecord: { token_id: 'token-2', user_id: 'user-2', status: 'PENDING', email_verified_at: null } });
   const result = await completePasswordSetup({ token: 'valid-token', password: 'correct horse battery staple', database: db });
   assert.equal(result.userId, 'user-2');
