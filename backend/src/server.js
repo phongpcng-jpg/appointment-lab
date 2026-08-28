@@ -6,13 +6,13 @@ import rateLimit from '@fastify/rate-limit';
 import sensible from '@fastify/sensible';
 import cookie from '@fastify/cookie';
 import { config } from './config.js';
-import { closeDatabase } from './db.js';
+import { closeDatabase, db } from './db.js';
 import { healthRoutes } from './routes/health.js';
 import { authRoutes } from './routes/auth.js';
 import { emailVerificationRoutes } from './routes/email-verification.js';
 import { bootstrapAdmin } from './services/admin-bootstrap.js';
 
-export function buildApp() {
+export function buildApp({ database = db } = {}) {
   const app = Fastify({ logger: true, requestIdHeader: 'x-request-id' });
 
   app.register(helmet);
@@ -21,8 +21,8 @@ export function buildApp() {
   app.register(sensible);
   app.register(cookie);
   app.register(healthRoutes);
-  app.register(authRoutes);
-  app.register(emailVerificationRoutes);
+  app.register(authRoutes, { database });
+  app.register(emailVerificationRoutes, { database });
 
   app.setErrorHandler((error, request, reply) => {
     request.log.error({ err: error }, 'request failed');
