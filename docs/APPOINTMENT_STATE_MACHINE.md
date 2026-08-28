@@ -1,29 +1,28 @@
 # Appointment State Machine
 
 ```text
-DRAFT ──publish──> PUBLIC ──start──> IN_PROGRESS ──complete (report exists)──> COMPLETE
+DRAFT ──publish──> PUBLIC ──start──> IN_PROGRESS ──complete(report)──> COMPLETE
   │                    │                    │
   └─ delete            └─ cancel           └─ cancel
                        ↓                    ↓
                     CANCELED             CANCELED
 ```
 
-## Allowed transitions
+Allowed transitions:
 - DRAFT -> PUBLIC
 - PUBLIC -> IN_PROGRESS
 - PUBLIC -> CANCELED
-- IN_PROGRESS -> COMPLETE only if a report exists
+- IN_PROGRESS -> COMPLETE only when a report exists
 - IN_PROGRESS -> CANCELED
 
-## Disallowed
-- DRAFT -> CANCELED as a deactivation side effect
-- Any transition out of COMPLETE/CANCELED
-- Any note change in COMPLETE/CANCELED
-- Publishing a DRAFT if provider/patient is PENDING or DEACTIVATED
-- Creating an appointment with PENDING/DEACTIVATED provider or patient
+COMPLETE and CANCELED are terminal. DRAFT can be deleted. Notes are mutable only before terminal states. DRAFT cannot be published if either assigned user is PENDING or DEACTIVATED.
 
-## Role scope
-ADMIN may perform all valid transitions. PROVIDER may transition own appointments according to source permissions. PATIENT may perform PUBLIC -> IN_PROGRESS for their own appointments. Backend validates actor, ownership, account state and current appointment state.
+ADMIN can perform valid transitions. PROVIDER can operate own appointments. PATIENT can perform PUBLIC -> IN_PROGRESS for own appointments.
 
-## Deactivation rule
-Within a transaction, each affected PUBLIC/IN_PROGRESS appointment becomes CANCELED; DRAFT remains DRAFT; COMPLETE/CANCELED remain unchanged. Whether automatic cancellations emit notifications is an open Phase 0 question.
+Deactivation transaction:
+- PUBLIC -> CANCELED
+- IN_PROGRESS -> CANCELED
+- DRAFT remains DRAFT and is not publishable
+- COMPLETE/CANCELED remain unchanged
+
+Affected PUBLIC/IN_PROGRESS appointments generate cancellation notification business events for relevant recipients. Event creation is idempotent through the approved deterministic event key strategy.

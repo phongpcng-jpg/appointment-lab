@@ -1,73 +1,42 @@
 # Project Plan
 
 ## Objective
-Production-oriented Appointment Management System implemented as a modular monolith with React/Vite, Node.js/Fastify, PostgreSQL and JavaScript only.
+Production-oriented Appointment Management System as a JavaScript-only modular monolith.
 
-## Phase 0 status
-Planning is drafted from the supplied execution and agent prompts. Application coding must not start until the open questions are answered and this plan is approved.
+## Approved stack
+React/Vite, React Router, TanStack Query, React Hook Form, Zod, Tailwind CSS, native SSE/Web Push; Node.js/Fastify, PostgreSQL/Knex, JWT, bcrypt, Nodemailer/SMTP, Google OAuth 2.0 and WebAuthn/Passkeys.
 
 ## Architecture
-Frontend: React + Vite + React Router + TanStack Query + React Hook Form + Zod + Tailwind CSS + native EventSource + Web Push API.
-Backend: Fastify routes/controllers -> schemas/DTOs -> services/use cases -> domain rules -> repositories -> infrastructure. Cross-cutting plugins handle config, auth, authorization, errors, logging, rate limits and SSE.
-Database: PostgreSQL via Knex migrations/transactions/constraints/indexes.
-Deployment: separate frontend static service, backend web service, PostgreSQL; environment configuration; health endpoint; graceful shutdown.
+Browser -> React SPA -> Fastify REST/SSE -> PostgreSQL. Backend uses routes/controllers, validation/DTOs, services, domain rules, repositories and infrastructure. Notifications use a transactional outbox.
 
-## Modules
-Authentication, users/profiles, sessions, OAuth identities, passkeys, setup/reset/verification tokens, appointments, reports, notifications, push subscriptions, administration.
+## Roles and lifecycle
+Exactly one ADMIN plus PROVIDER and PATIENT. Account status is PENDING/ACTIVE/DEACTIVATED; profile completion is independent. ADMIN is immutable for deletion/deactivation/email. Reactivation is an ADMIN capability.
 
-## Domain model
-User 1:N refresh sessions, OAuth identities, passkeys, setup/reset/verification tokens, notifications, push subscriptions. Provider/User and Patient/User participate in appointments. Appointment 1:0..1 Report. Notifications may reference appointments. Appointment has immutable provider/patient assignment and a provider+patient display sequence.
+## Appointment
+Fields are provider, patient, note, status, display sequence, createdAt and updatedAt. No scheduled date/time in the current version. Sequence is increasing per provider/patient pair but not gapless. State machine: DRAFT -> PUBLIC -> IN_PROGRESS -> COMPLETE; PUBLIC/IN_PROGRESS -> CANCELED. COMPLETE/CANCELED terminal. DRAFT deletion is allowed.
 
-## Authorization matrix
-| Capability | ADMIN | PROVIDER | PATIENT |
-|---|---|---|---|
-| View users | All, except self via normal management | No general user management | No |
-| Create provider | Yes | No | No |
-| Create patient | Yes | Yes | No |
-| Deactivate users | Yes, not self/admin | No | No |
-| Delete PENDING user | Yes | No | No |
-| View appointments | All | Own only | Own only |
-| Create appointment | Active provider + active patient | Self + active patient | No |
-| Create DRAFT/PUBLIC | Yes | Yes | No |
-| PUBLIC -> IN_PROGRESS | Yes | Own | Own |
-| IN_PROGRESS -> COMPLETE | Yes, report required | Own, report required | No |
-| Cancel valid appointment | Yes | Own | No explicit cancellation permission in source |
-| Update note | DRAFT/PUBLIC/IN_PROGRESS | Own | No explicit note permission in source |
-| Delete DRAFT | Yes | Own | No |
-| View reports | All | Own appointments | Own appointment |
-| Create/update/delete report | Admin delete only | No | Own, while IN_PROGRESS |
-| Manage passkeys | Own | Own | Own |
-| Notifications | Own recipient records | Own recipient records | Own recipient records |
+## Reports
+Appointment has 0..1 report. Patient manages report only while IN_PROGRESS. Completion requires a report. Terminal-state reports are immutable to patient; ADMIN may delete.
 
-## Account lifecycle
-PENDING -> ACTIVE after password setup. ACTIVE may have profileCompleted=false. Deactivation is ACTIVE/operational state separate from profile completion. Deactivated users cannot log in; sessions are invalidated. Admin is singleton and immutable in deletion/deactivation/email.
+## Notifications
+Persisted notification is source of truth. Read state uses `readAt`. Business events use deterministic idempotency keys. Transactional outbox asynchronously fans out to SSE, email and enabled Web Push.
 
-## Appointment state machine
-DRAFT -> PUBLIC -> IN_PROGRESS -> COMPLETE. PUBLIC -> CANCELED. IN_PROGRESS -> CANCELED. COMPLETE/CANCELED are terminal. DRAFT deletion is allowed. DRAFT involving a deactivated account remains DRAFT and cannot be published. Deactivation transactionally cancels PUBLIC/IN_PROGRESS appointments.
-
-## Report lifecycle
-Appointment has zero or one report. Patient create/update/delete only during IN_PROGRESS. Once COMPLETE/CANCELED, report cannot be updated/deleted by patient; admin deletion remains an explicit administrative capability. Completion requires report existence.
-
-## Notification architecture
-Business transaction persists notification before delivery. A notification service then fans out to authenticated SSE connections, email and enabled Web Push subscriptions. Delivery failures are isolated from business transaction success. Recipient filtering is authorization-based. Duplicate creation prevention must be designed using event/idempotency semantics.
-
-## Authentication architecture
-Email/password; Google OAuth; WebAuthn. Access token is short-lived JWT. Refresh token is random opaque and hashed at rest, with expiry, rotation, revocation and session tracking. Setup/reset/verification tokens are random, hashed, expiring and one-use. Security-sensitive changes invalidate relevant sessions according to the approved policy.
+## Authentication/security
+Email/password, Google OAuth link/login for provisioned accounts, WebAuthn passkeys. Short-lived stateless JWT access token; opaque hashed stateful refresh session with rotation/revocation in Secure/HttpOnly/SameSite cookie. CSRF applies to cookie-authenticated operations. One-time security tokens are random, hashed, expiring and single-use. Password minimum 12 characters. Backend enforces auth, status, profile completion, role, ownership and state.
 
 ## Database plan
-Initial candidate tables: users, refresh_sessions, oauth_identities, passkeys, account_setup_tokens, password_reset_tokens, email_verification_tokens, appointments, reports, notifications, push_subscriptions. Final columns, enums/checks, indexes and deletion behavior require Phase 0 approval.
+Business tables will be introduced in their relevant phases: users, refresh_sessions, oauth_identities, passkeys, account_setup_tokens, password_reset_tokens, email_verification_tokens, appointments, reports, notifications, notification_outbox, push_subscriptions, audit_logs. PostgreSQL constraints/indexes/transactions enforce invariants.
 
-## API plan
-REST under a versioned namespace (proposed `/api/v1`). Domains: auth, users/profile, sessions, OAuth, passkeys, appointments, reports, notifications, push subscriptions, admin. Responses use DTOs, never persistence objects. Errors contain status/code/message/optional validation details/request ID.
+## API/frontend
+REST `/api/v1`, stable error codes and request IDs. Frontend has centralized auth/query state, protected role routes, global PROFILE_INCOMPLETE handling, reusable tables/forms/search/dropdowns and notification SSE/push integration.
 
-## Frontend plan
-Central API client, auth/session state, query cache, global PROFILE_INCOMPLETE handling, protected/role routes, reusable tables/forms/dropdowns, notification center, SSE lifecycle and push preference management. Profile completion page remains reachable while normal business pages are blocked.
+## Deployment
+Render-friendly frontend static service, Fastify service and managed PostgreSQL. Environment-driven configuration, migrations, health checks, CORS, graceful shutdown and production security.
 
-## Security/testing
-Backend-first authorization; validation at boundaries; bcrypt password hashing; secure random tokens; secure cookies where selected; CORS/headers/rate limiting; no secret logs; transaction boundaries; ownership/state checks. Test auth, authorization, constraints, state machine, report cardinality, deactivation effects, notifications, SSE isolation, push/email failure isolation, builds and migrations.
+## Phase status
+- Phase 0: COMPLETED — requirements and architecture approved by user.
+- Phase 1: COMPLETED — foundation implemented and published in this commit.
+- Phase 2: WAITING FOR EXPLICIT APPROVAL.
 
 ## Phase sequence
-0 Planning and approval. 1 Foundation. 2 User/auth foundation. 3 Password/session security. 4 OAuth/passkeys. 5 User management. 6 Appointments. 7 Reports. 8 Notifications/SSE. 9 Web Push. 10 Complete frontend. 11 Integration/security hardening. 12 Render deployment/final validation. Each phase ends with tests, documentation, commit/publish, report and STOP.
-
-## Git workflow
-Target repository: `phongpcng-jpg/appointment-lab`. Development branch: `feature/version2`. Never commit project work to `main`. Use logical commits per completed unit/phase. The existing branch currently contains only README.md.
+0 planning; 1 foundation; 2 user/auth foundation; 3 password/session security; 4 OAuth/passkeys; 5 user management; 6 appointments; 7 reports; 8 notifications/SSE; 9 Web Push; 10 complete frontend; 11 integration/security hardening; 12 Render deployment/final validation.
