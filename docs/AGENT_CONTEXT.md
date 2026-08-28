@@ -1,42 +1,48 @@
 # Agent Context
 
+## Current project
+Appointment Management System — production-oriented JavaScript modular monolith.
+
+## Repository rule
+All implementation and documentation changes must be committed only to `feature/version2` unless the user explicitly instructs otherwise. Do not switch to or commit to `main` autonomously.
+
+## Package architecture
+The repository intentionally contains two independent npm packages:
+- `frontend/`: React + Vite SPA.
+- `backend/`: Node.js + Fastify API.
+
+This separation is a package/build/deployment boundary only. The backend remains a modular monolith; microservices are not being introduced.
+
 ## Current phase
-PHASE 1 — PROJECT FOUNDATION
+Phase 1 — Repository & Foundation.
 
-## Status
-COMPLETED. Phase 0 requirements are approved. Phase 1 foundation is implemented, documented and committed to `feature/version2`. A package-structure refactor has also been completed. Waiting for explicit approval before Phase 2.
+## Phase 1 status
+Foundation refactor and implementation are in progress/final verification. No Phase 2 business implementation should begin until Phase 1 is explicitly approved by the user.
 
-## Repository
-`phongpcng-jpg/appointment-lab`, development branch `feature/version2`. Never switch to `main` unless the user explicitly requests it.
+## Confirmed decisions
+- Appointment has no scheduled date/time for the current version.
+- Notifications support `readAt`, mark-one, and mark-all.
+- New email addresses must be verified before normal use.
+- Google OAuth links/logs in only to provisioned accounts.
+- Passkey registration requires an authenticated existing account.
+- Access JWT is stateless; refresh sessions are stateful and cookie-based in the web architecture.
+- Profile completion requires the agreed minimum profile state including valid email policy and `fullName`.
+- ADMIN can reactivate users.
+- PATIENT cannot cancel appointments.
+- Notification delivery uses a transactional outbox.
+- Web Push preference defaults to enabled; browser permission/subscription is separate.
+- Password minimum is 12 characters.
+- Persistent PostgreSQL `audit_logs` is required.
+- API pagination uses page/pageSize with total metadata.
+- Render deployment is performed when required credentials/environment are supplied.
+- Appointment sequence is unique per provider/patient and does not need to be gapless.
+- Direct creation as PUBLIC emits the same notification behavior as DRAFT → PUBLIC.
+- Notification idempotency uses deterministic business-event keys plus database uniqueness.
+- API versioning uses `/api/v1`.
+- Agreed rate-limit defaults are documented in project decisions.
+- Agreed data retention policy is documented in project decisions.
+- Profiles do not add unapproved medical/demographic fields.
+- Reports are plain-text descriptions for the current scope.
 
-## Completed phases
-- Phase 0: requirements, architecture and decisions finalized.
-- Phase 1: repository foundation, API/web shells, configuration, logging/error/security foundation, migration pipeline, tests and CI.
-- Package refactor: backend and frontend split into independent npm packages.
-
-## Architecture
-JavaScript-only modular monolith with two independent packages. `backend/` is Fastify/PostgreSQL/Knex. `frontend/` is React/Vite. There is no root npm workspace/package. Backend layering and later domain modules are documented in `docs/ARCHITECTURE.md`.
-
-## Database
-No business tables yet. Knex migration pipeline is established with a foundation guard table. Business schema starts in later phases.
-
-## Authentication
-Not implemented in Phase 1. Approved target: email/password, Google OAuth, WebAuthn, short-lived JWT access and opaque stateful refresh sessions.
-
-## API
-Foundation endpoints: `GET /health`, `GET /api/v1/health`. Stable error envelope includes status, code, message and requestId.
-
-## Frontend
-Minimal React/Vite shell with TanStack Query provider. Business UI starts in later phases.
-
-## Security
-Helmet, CORS, rate limiting, environment validation, request IDs and safe error handling are established. No secrets are committed; `.env` is ignored.
-
-## Tests/build
-Backend and frontend each own their test/lint/build scripts. GitHub Actions runs verification independently from `backend/` and `frontend/` on `feature/version2`.
-
-## Known limitations
-Dependencies are defined but no lockfiles are committed yet. Full migration verification requires a reachable PostgreSQL instance. CI installs dependencies from the individual package manifests.
-
-## Next action
-Wait for explicit user approval, then inspect the refactored foundation and implement Phase 2 only.
+## Phase protocol
+After each phase: test, document, publish/commit to `feature/version2`, report, and stop for explicit approval.
