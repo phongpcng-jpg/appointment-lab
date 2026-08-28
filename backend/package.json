@@ -8,6 +8,7 @@
     "start": "node src/server.js",
     "test": "node --test",
     "lint": "eslint .",
+    "build": "node --check src/server.js && node --check src/config.js && node --check src/db.js",
     "db:migrate": "knex --knexfile knexfile.js migrate:latest",
     "db:rollback": "knex --knexfile knexfile.js migrate:rollback"
   },
