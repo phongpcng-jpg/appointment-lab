@@ -8,6 +8,7 @@ import cookie from '@fastify/cookie';
 import { config } from './config.js';
 import { closeDatabase } from './db.js';
 import { healthRoutes } from './routes/health.js';
+import { authRoutes } from './routes/auth.js';
 import { bootstrapAdmin } from './services/admin-bootstrap.js';
 
 export function buildApp() {
@@ -19,6 +20,7 @@ export function buildApp() {
   app.register(sensible);
   app.register(cookie);
   app.register(healthRoutes);
+  app.register(authRoutes);
 
   app.setErrorHandler((error, request, reply) => {
     request.log.error({ err: error }, 'request failed');
