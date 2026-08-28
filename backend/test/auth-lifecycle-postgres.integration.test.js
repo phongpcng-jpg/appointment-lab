@@ -20,7 +20,7 @@ function cookieValue(setCookieHeader, name) {
 
 test('HTTP authentication lifecycle uses JWT access tokens and stateful refresh cookies', { skip: !runIntegration }, async () => {
   const database = knex(dbConfig);
-  const app = buildApp();
+  const app = buildApp({ database });
   const userId = crypto.randomUUID();
   const email = `auth-${userId}@example.test`;
   const password = 'integration-password-123';
@@ -102,8 +102,8 @@ test('HTTP authentication lifecycle uses JWT access tokens and stateful refresh 
     assert.equal(badLogin.statusCode, 401);
     assert.equal(badLogin.json().code, 'INVALID_CREDENTIALS');
   } finally {
-    await app.close();
     await database('users').where({ id: userId }).del();
+    await app.close();
     await database.destroy();
   }
 });
