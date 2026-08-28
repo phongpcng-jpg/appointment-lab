@@ -1,5 +1,6 @@
 export async function up(knex) {
   await knex.raw('CREATE EXTENSION IF NOT EXISTS citext');
+  await knex.raw('CREATE EXTENSION IF NOT EXISTS pgcrypto');
 
   await knex.schema.createTable('users', (table) => {
     table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
@@ -57,7 +58,7 @@ export async function up(knex) {
   });
 
   await knex.raw("CREATE UNIQUE INDEX users_one_admin_idx ON users (role) WHERE role = 'ADMIN'");
-  await knex.raw("ALTER TABLE users ADD CONSTRAINT users_pending_password_check CHECK (status = 'PENDING' OR password_hash IS NOT NULL)");
+  await knex.raw("ALTER TABLE users ADD CONSTRAINT users_active_auth_check CHECK (status <> 'ACTIVE' OR (password_hash IS NOT NULL AND email_verified_at IS NOT NULL))");
 }
 
 export async function down(knex) {
