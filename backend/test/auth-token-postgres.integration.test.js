@@ -47,8 +47,37 @@ test('PostgreSQL token lifecycle integration', { skip: !runIntegration }, async 
     const expiredToken = crypto.randomBytes(32).toString('hex');
     await db('email_verification_tokens').insert({ user_id: userId, token_hash: hashOpaqueToken(expiredToken), expires_at: db.raw("now() - interval '1 minute'") });
     await assert.rejects(verifyEmailToken({ token: expiredToken, database: db }), (error) => error.code === 'INVALID_VERIFICATION_TOKEN');
+
+    const concurrentToken = crypto.randomBytes(32).toString('hex');
+    await db('email_verification_tokens').insert({ user_id: userId, token_hash: hashOpaqueToken(concurrentToken), expires_at: db.raw("now() + interval '10 minutes'") });
+
+    const results = await Promise.allSettled([
+      verifyEmailToken({ token: concurrentToken, database: db }),
+      verifyEmailToken({ token: concurrentToken, database: db })
+    ]);
+
+    assert.equal(results.filter((result) => result.status === 'fulfilled').length, 1);
+    assert.equal(results.filter((result) => result.status === 'rejected').length, 1);
+    assert.equal(results.find((result) => result.status === 'rejected').reason.code, 'INVALID_VERIFICATION_TOKEN');
+
+    const concurrencyTokenRow = await db('email_verification_tokens')
+      .where({ user_id: userId, token_hash: hashOpaqueToken(concurrentToken) })
+      .first('used_at');
+    assert.ok(concurrencyTokenRow.used_at);
+
+    const rollbackUserId = crypto.randomUUID();
+    const rollbackToken = crypto.randomBytes(32).toString('hex');
+    await db.transaction(async (trx) => {
+      await trx('users').insert({ id: rollbackUserId, email: `rollback-${rollbackUserId}@example.test`, role: 'PATIENT', status: 'PENDING' });
+      await trx('email_verification_tokens').insert({ user_id: rollbackUserId, token_hash: hashOpaqueToken(rollbackToken), expires_at: trx.raw("now() + interval '10 minutes'") });
+      throw new Error('forced rollback');
+    }).catch((error) => assert.equal(error.message, 'forced rollback'));
+
+    assert.equal(await db('users').where({ id: rollbackUserId }).first(), undefined);
+    assert.equal(await db('email_verification_tokens').where({ user_id: rollbackUserId }).first(), undefined);
   } finally {
     await db('users').where({ id: userId }).del();
+    await db('users').where('email', 'like', 'rollback-%@example.test').del();
     await db.destroy();
   }
 });
