@@ -1,17 +1,23 @@
 import nodemailer from 'nodemailer';
-import { env } from '../config.js';
+import { config } from '../config.js';
 
-const transport = nodemailer.createTransport({
-  host: env.SMTP_HOST,
-  port: env.SMTP_PORT,
-  secure: env.SMTP_PORT === 465,
-  auth: { user: env.SMTP_USER, pass: env.SMTP_PASSWORD }
-});
+function createTransport() {
+  if (!config.SMTP_HOST || !config.SMTP_USER || !config.SMTP_PASSWORD || !config.SMTP_FROM) {
+    throw new Error('SMTP configuration is incomplete');
+  }
+
+  return nodemailer.createTransport({
+    host: config.SMTP_HOST,
+    port: config.SMTP_PORT,
+    secure: config.SMTP_PORT === 465,
+    auth: { user: config.SMTP_USER, pass: config.SMTP_PASSWORD }
+  });
+}
 
 export async function sendMail({ to, subject, text }) {
-  return transport.sendMail({ from: env.SMTP_FROM, to, subject, text });
+  return createTransport().sendMail({ from: config.SMTP_FROM, to, subject, text });
 }
 
 export async function verifyMailer() {
-  return transport.verify();
+  return createTransport().verify();
 }
