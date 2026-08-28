@@ -4,9 +4,11 @@ import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import sensible from '@fastify/sensible';
+import cookie from '@fastify/cookie';
 import { config } from './config.js';
 import { closeDatabase } from './db.js';
 import { healthRoutes } from './routes/health.js';
+import { bootstrapAdmin } from './services/admin-bootstrap.js';
 
 export function buildApp() {
   const app = Fastify({ logger: true, requestIdHeader: 'x-request-id' });
@@ -15,6 +17,7 @@ export function buildApp() {
   app.register(cors, { origin: config.CORS_ORIGIN, credentials: true });
   app.register(rateLimit, { max: 100, timeWindow: '1 minute' });
   app.register(sensible);
+  app.register(cookie);
   app.register(healthRoutes);
 
   app.setErrorHandler((error, request, reply) => {
@@ -32,7 +35,8 @@ export function buildApp() {
   return app;
 }
 
-if (process.argv[1] && new URL(import.meta.url).pathname === process.argv[1]) {
+async function start() {
+  await bootstrapAdmin();
   const app = buildApp();
   const shutdown = async (signal) => {
     app.log.info({ signal }, 'shutting down');
@@ -42,8 +46,12 @@ if (process.argv[1] && new URL(import.meta.url).pathname === process.argv[1]) {
   };
   process.once('SIGINT', shutdown);
   process.once('SIGTERM', shutdown);
-  app.listen({ port: config.PORT, host: config.HOST }).catch((error) => {
-    app.log.error(error);
+  await app.listen({ port: config.PORT, host: config.HOST });
+}
+
+if (process.argv[1] && new URL(import.meta.url).pathname === process.argv[1]) {
+  start().catch((error) => {
+    console.error('Failed to start backend:', error);
     process.exit(1);
   });
 }
