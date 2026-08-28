@@ -1,4 +1,4 @@
-import knex from 'knex';
+import 'dotenv/config';
 import { config } from './src/config.js';
 
 export default {
@@ -6,5 +6,3 @@ export default {
   connection: config.DATABASE_URL,
   migrations: { directory: './migrations' }
 };
-
-export const db = config.DATABASE_URL ? knex({ client: 'pg', connection: config.DATABASE_URL }) : null;
