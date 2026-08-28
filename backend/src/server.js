@@ -6,6 +6,7 @@ import rateLimit from '@fastify/rate-limit';
 import sensible from '@fastify/sensible';
 import { config } from './config.js';
 import { closeDatabase } from './db.js';
+import { healthRoutes } from './routes/health.js';
 
 export function buildApp() {
   const app = Fastify({ logger: true, requestIdHeader: 'x-request-id' });
@@ -14,9 +15,7 @@ export function buildApp() {
   app.register(cors, { origin: config.CORS_ORIGIN, credentials: true });
   app.register(rateLimit, { max: 100, timeWindow: '1 minute' });
   app.register(sensible);
-
-  app.get('/health', async () => ({ status: 'ok' }));
-  app.get('/api/v1/health', async () => ({ status: 'ok' }));
+  app.register(healthRoutes);
 
   app.setErrorHandler((error, request, reply) => {
     request.log.error({ err: error }, 'request failed');
@@ -25,6 +24,7 @@ export function buildApp() {
       status: statusCode,
       code: statusCode === 500 ? 'INTERNAL_SERVER_ERROR' : error.code || 'REQUEST_ERROR',
       message: statusCode === 500 ? 'Internal server error' : error.message,
+      ...(error.details ? { details: error.details } : {}),
       requestId: request.id
     });
   });
