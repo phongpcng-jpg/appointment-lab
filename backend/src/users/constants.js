@@ -1,0 +1,2 @@
+export const USER_ROLES = Object.freeze({ ADMIN: 'ADMIN', PROVIDER: 'PROVIDER', PATIENT: 'PATIENT' });
+export const USER_STATUSES = Object.freeze({ PENDING: 'PENDING', ACTIVE: 'ACTIVE', DEACTIVATED: 'DEACTIVATED' });
