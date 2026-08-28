@@ -1,7 +1,7 @@
 import { generateOpaqueToken, hashOpaqueToken } from './crypto.js';
 
-export const SETUP_TOKEN_TTL_HOURS = 24;
-export const VERIFICATION_TOKEN_TTL_HOURS = 24;
+export const SETUP_TOKEN_TTL_HOURS = 1;
+export const VERIFICATION_TOKEN_TTL_HOURS = 1;
 
 function expiresFromNow(hours) {
   return new Date(Date.now() + hours * 60 * 60 * 1000);
