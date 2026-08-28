@@ -7,7 +7,13 @@ Production-oriented Appointment Management System as a JavaScript-only modular m
 React/Vite, React Router, TanStack Query, React Hook Form, Zod, Tailwind CSS, native SSE/Web Push; Node.js/Fastify, PostgreSQL/Knex, JWT, bcrypt, Nodemailer/SMTP, Google OAuth 2.0 and WebAuthn/Passkeys.
 
 ## Architecture
-Browser -> React SPA -> Fastify REST/SSE -> PostgreSQL. Backend uses routes/controllers, validation/DTOs, services, domain rules, repositories and infrastructure. Notifications use a transactional outbox.
+Browser -> React SPA (`frontend`) -> Fastify REST/SSE (`backend`) -> PostgreSQL. Backend uses routes/controllers, validation/DTOs, services, domain rules, repositories and infrastructure. Notifications use a transactional outbox.
+
+## Repository structure
+The application has two independent npm packages with separate manifests:
+- `backend/` — Node.js/Fastify API, PostgreSQL/Knex migrations, backend tests and backend tooling.
+- `frontend/` — React/Vite SPA, frontend tests and frontend tooling.
+There is intentionally no root npm workspace/package; backend and frontend are installed and executed independently.
 
 ## Roles and lifecycle
 Exactly one ADMIN plus PROVIDER and PATIENT. Account status is PENDING/ACTIVE/DEACTIVATED; profile completion is independent. ADMIN is immutable for deletion/deactivation/email. Reactivation is an ADMIN capability.
@@ -35,7 +41,8 @@ Render-friendly frontend static service, Fastify service and managed PostgreSQL.
 
 ## Phase status
 - Phase 0: COMPLETED — requirements and architecture approved by user.
-- Phase 1: COMPLETED — foundation implemented and published in this commit.
+- Phase 1: COMPLETED — foundation implemented and published.
+- Package refactor: COMPLETED — backend/frontend are independent packages on `feature/version2`.
 - Phase 2: WAITING FOR EXPLICIT APPROVAL.
 
 ## Phase sequence
