@@ -1,49 +1,68 @@
 # Project Plan
 
-## Objective
-Production-oriented Appointment Management System as a JavaScript-only modular monolith.
-
-## Approved stack
-React/Vite, React Router, TanStack Query, React Hook Form, Zod, Tailwind CSS, native SSE/Web Push; Node.js/Fastify, PostgreSQL/Knex, JWT, bcrypt, Nodemailer/SMTP, Google OAuth 2.0 and WebAuthn/Passkeys.
-
 ## Architecture
-Browser -> React SPA (`frontend`) -> Fastify REST/SSE (`backend`) -> PostgreSQL. Backend uses routes/controllers, validation/DTOs, services, domain rules, repositories and infrastructure. Notifications use a transactional outbox.
 
-## Repository structure
-The application has two independent npm packages with separate manifests:
-- `backend/` — Node.js/Fastify API, PostgreSQL/Knex migrations, backend tests and backend tooling.
-- `frontend/` — React/Vite SPA, frontend tests and frontend tooling.
-There is intentionally no root npm workspace/package; backend and frontend are installed and executed independently.
+Appointment Management System is a production-oriented JavaScript modular monolith. The frontend and backend are maintained as two independent npm packages for dependency, build, and deployment isolation; this does not make the backend a microservice.
 
-## Roles and lifecycle
-Exactly one ADMIN plus PROVIDER and PATIENT. Account status is PENDING/ACTIVE/DEACTIVATED; profile completion is independent. ADMIN is immutable for deletion/deactivation/email. Reactivation is an ADMIN capability.
+- `frontend/`: React + Vite SPA.
+- `backend/`: Node.js + Fastify API and domain application.
+- PostgreSQL + Knex for persistence.
+- REST API under `/api/v1`.
 
-## Appointment
-Fields are provider, patient, note, status, display sequence, createdAt and updatedAt. No scheduled date/time in the current version. Sequence is increasing per provider/patient pair but not gapless. State machine: DRAFT -> PUBLIC -> IN_PROGRESS -> COMPLETE; PUBLIC/IN_PROGRESS -> CANCELED. COMPLETE/CANCELED terminal. DRAFT deletion is allowed.
+## Phase 1 — Repository & Foundation
 
-## Reports
-Appointment has 0..1 report. Patient manages report only while IN_PROGRESS. Completion requires a report. Terminal-state reports are immutable to patient; ADMIN may delete.
+Goal: establish a clean, independently runnable frontend/backend foundation without implementing business features from later phases.
 
-## Notifications
-Persisted notification is source of truth. Read state uses `readAt`. Business events use deterministic idempotency keys. Transactional outbox asynchronously fans out to SSE, email and enabled Web Push.
+Deliverables:
+- two independent npm packages under `frontend/` and `backend/`;
+- frontend React/Vite bootstrap with React Router and TanStack Query provider;
+- backend Fastify bootstrap with request IDs, structured logging, security headers, CORS, rate limiting, and stable error handling;
+- Zod environment/request-validation foundation;
+- PostgreSQL/Knex configuration and migration infrastructure;
+- health endpoints;
+- automated backend/frontend tests and CI;
+- environment examples and development documentation.
 
-## Authentication/security
-Email/password, Google OAuth link/login for provisioned accounts, WebAuthn passkeys. Short-lived stateless JWT access token; opaque hashed stateful refresh session with rotation/revocation in Secure/HttpOnly/SameSite cookie. CSRF applies to cookie-authenticated operations. One-time security tokens are random, hashed, expiring and single-use. Password minimum 12 characters. Backend enforces auth, status, profile completion, role, ownership and state.
+Explicitly out of scope for Phase 1:
+- user/authentication implementation;
+- appointment/report/notification business modules;
+- OAuth/passkeys;
+- SSE/Web Push/email delivery;
+- production deployment execution.
 
-## Database plan
-Business tables will be introduced in their relevant phases: users, refresh_sessions, oauth_identities, passkeys, account_setup_tokens, password_reset_tokens, email_verification_tokens, appointments, reports, notifications, notification_outbox, push_subscriptions, audit_logs. PostgreSQL constraints/indexes/transactions enforce invariants.
+## Phase 2 — User Model & Authentication Foundation
+Implement users, roles/status, profiles, admin provisioning, email verification/setup, password authentication, JWT access tokens, refresh sessions, logout, and forced profile completion.
 
-## API/frontend
-REST `/api/v1`, stable error codes and request IDs. Frontend has centralized auth/query state, protected role routes, global PROFILE_INCOMPLETE handling, reusable tables/forms/search/dropdowns and notification SSE/push integration.
+## Phase 3 — OAuth & Passkeys
+Implement Google OAuth account linking/login and WebAuthn passkey registration/authentication.
 
-## Deployment
-Render-friendly frontend static service, Fastify service and managed PostgreSQL. Environment-driven configuration, migrations, health checks, CORS, graceful shutdown and production security.
+## Phase 4 — Authorization & User Management
+Implement RBAC, ownership enforcement, user management, deactivation/reactivation, and profile update rules.
 
-## Phase status
-- Phase 0: COMPLETED — requirements and architecture approved by user.
-- Phase 1: COMPLETED — foundation implemented and published.
-- Package refactor: COMPLETED — backend/frontend are independent packages on `feature/version2`.
-- Phase 2: WAITING FOR EXPLICIT APPROVAL.
+## Phase 5 — Appointment Management
+Implement appointment model, strict state transitions, sequence allocation, cancellation/completion rules, concurrency protection, and appointment APIs/UI.
 
-## Phase sequence
-0 planning; 1 foundation; 2 user/auth foundation; 3 password/session security; 4 OAuth/passkeys; 5 user management; 6 appointments; 7 reports; 8 notifications/SSE; 9 Web Push; 10 complete frontend; 11 integration/security hardening; 12 Render deployment/final validation.
+## Phase 6 — Reports
+Implement patient reports, completion requirement, ownership and provider/admin access rules.
+
+## Phase 7 — Notifications
+Implement persistent notifications, idempotent event generation, read state, transactional outbox, and email notification delivery foundation.
+
+## Phase 8 — Real-time & Web Push
+Implement SSE delivery, reconnect behavior, Web Push subscriptions/preferences, and notification fan-out.
+
+## Phase 9 — Frontend Product Workflows
+Implement protected routing, profile completion enforcement, role-specific dashboards, search/filter/sort/pagination, and responsive UX.
+
+## Phase 10 — Security Hardening
+Implement production security controls, rate limits, token/session hardening, audit logging, security headers, CSRF defenses where applicable, and abuse protection.
+
+## Phase 11 — Testing & Quality
+Expand unit, integration, API, authorization, state-machine, concurrency, notification, frontend, and end-to-end coverage.
+
+## Phase 12 — Deployment
+Prepare and, when credentials/environment are supplied, deploy frontend/backend/PostgreSQL on Render with environment-based production configuration.
+
+## Phase protocol
+
+Each phase is implemented incrementally. After implementation: run applicable tests, update documentation, commit/publish only to `feature/version2`, report results and limitations, then stop for explicit approval before the next phase.
