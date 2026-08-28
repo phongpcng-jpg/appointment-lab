@@ -1,5 +1,3 @@
-import { randomUUID } from 'node:crypto';
-
 export async function up(knex) {
   await knex.raw('CREATE EXTENSION IF NOT EXISTS citext');
 
