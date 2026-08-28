@@ -1,6 +1,6 @@
 {
   "name": "appointment-backend",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,13 +13,17 @@
     "db:rollback": "knex --knexfile knexfile.js migrate:rollback"
   },
   "dependencies": {
+    "@fastify/cookie": "^11.0.2",
     "@fastify/cors": "^11.1.0",
     "@fastify/helmet": "^13.0.2",
     "@fastify/rate-limit": "^10.3.0",
     "@fastify/sensible": "^6.0.3",
+    "bcryptjs": "^3.0.2",
     "dotenv": "^17.2.1",
     "fastify": "^5.5.0",
+    "jose": "^6.1.0",
     "knex": "^3.1.0",
+    "nodemailer": "^7.0.6",
     "pg": "^8.16.3",
     "pino": "^9.9.0",
     "zod": "^4.0.17"
