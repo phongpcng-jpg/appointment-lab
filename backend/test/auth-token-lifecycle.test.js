@@ -4,44 +4,30 @@ import { hashOpaqueToken } from '../src/auth/crypto.js';
 import { verifyEmailToken } from '../src/auth/email-verification.js';
 import { completePasswordSetup } from '../src/auth/password-setup.js';
 
+function createQuery(record, calls, type) {
+  return {
+    join() { return this; },
+    where() { return this; },
+    whereNull() { return this; },
+    andWhere() { return this; },
+    forUpdate() { return this; },
+    first: async () => record,
+    update: async (value) => calls.push([type, value])
+  };
+}
+
 function createDb({ emailRecord = null, setupRecord = null } = {}) {
   const calls = [];
-  const db = { calls, fn: { now: () => 'NOW' } };
+  const db = function table(name) {
+    if (name === 'email_verification_tokens') return createQuery(emailRecord, calls, 'email-token');
+    if (name === 'password_setup_tokens') return createQuery(setupRecord, calls, 'setup-token');
+    if (name === 'users') return createQuery(null, calls, 'user');
+    throw new Error(`Unexpected table: ${name}`);
+  };
 
-  db.transaction = async (callback) => callback({
-    fn: db.fn,
-    users: {
-      where() {
-        return { update: async (value) => calls.push(['user', value]) };
-      }
-    },
-    email_verification_tokens: {
-      where() {
-        return {
-          join() { return this; },
-          where() { return this; },
-          whereNull() { return this; },
-          andWhere() { return this; },
-          forUpdate() { return this; },
-          first: async () => emailRecord,
-          update: async (value) => calls.push(['email-token', value])
-        };
-      }
-    },
-    password_setup_tokens: {
-      where() {
-        return {
-          join() { return this; },
-          where() { return this; },
-          whereNull() { return this; },
-          andWhere() { return this; },
-          first: async () => setupRecord,
-          update: async (value) => calls.push(['setup-token', value])
-        };
-      }
-    }
-  });
-
+  db.calls = calls;
+  db.fn = { now: () => 'NOW' };
+  db.transaction = async (callback) => callback(db);
   return db;
 }
 
