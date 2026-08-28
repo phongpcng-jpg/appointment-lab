@@ -4,8 +4,17 @@ import { createRefreshSession } from './refresh-session.js';
 
 export async function authenticateUser({ email, password, database }) {
   const user = await database('users')
-    .whereRaw('email = ?', [email])
-    .first('id', 'email', 'password_hash', 'role', 'status', 'email_verified_at', 'profile_completed');
+    .leftJoin('user_profiles', 'user_profiles.user_id', 'users.id')
+    .whereRaw('users.email = ?', [email])
+    .first(
+      'users.id',
+      'users.email',
+      'users.password_hash',
+      'users.role',
+      'users.status',
+      'users.email_verified_at',
+      database.raw('COALESCE(user_profiles.profile_completed, false) AS profile_completed')
+    );
 
   const validPassword = user?.password_hash ? await verifyPassword(password, user.password_hash) : false;
   if (!user || !validPassword || user.status !== 'ACTIVE' || !user.email_verified_at) {
