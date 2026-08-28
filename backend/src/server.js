@@ -9,6 +9,7 @@ import { config } from './config.js';
 import { closeDatabase } from './db.js';
 import { healthRoutes } from './routes/health.js';
 import { authRoutes } from './routes/auth.js';
+import { emailVerificationRoutes } from './routes/email-verification.js';
 import { bootstrapAdmin } from './services/admin-bootstrap.js';
 
 export function buildApp() {
@@ -21,6 +22,7 @@ export function buildApp() {
   app.register(cookie);
   app.register(healthRoutes);
   app.register(authRoutes);
+  app.register(emailVerificationRoutes);
 
   app.setErrorHandler((error, request, reply) => {
     request.log.error({ err: error }, 'request failed');
