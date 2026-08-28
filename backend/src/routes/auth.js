@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { completePasswordSetup } from '../auth/password-setup.js';
 import { authenticateUser } from '../auth/login.js';
-import { createAccessToken } from '../auth/jwt.js';
+import { signAccessToken } from '../auth/jwt.js';
 import { rotateRefreshSession, revokeRefreshSession } from '../auth/refresh-session.js';
 import { db } from '../db.js';
 
@@ -46,7 +46,7 @@ export async function authRoutes(app) {
 
     try {
       const result = await rotateRefreshSession({ token, database: db });
-      const accessToken = await createAccessToken(result);
+      const accessToken = await signAccessToken({ userId: result.userId, role: result.role, status: result.status });
       setRefreshCookie(reply, result.token);
       return reply.send({ data: { accessToken } });
     } catch (error) {
